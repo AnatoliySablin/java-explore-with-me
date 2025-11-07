@@ -3,8 +3,8 @@ package ru.practicum.explorewithme.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,12 +33,21 @@ public class StatsController {
 
     @GetMapping("/stats")
     public List<ViewStatsDto> getStats(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @RequestParam String start,
+            @RequestParam String end,
             @RequestParam(required = false) List<String> uris,
             @RequestParam(defaultValue = "false") Boolean unique) {
-        log.info("GET /stats start={}, end={}, uris={}, unique={}", start, end, uris, unique);
-        return statsService.getStats(start, end, uris, unique);
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        // На некоторых окружениях параметры приходят не декодированными (%20), поэтому декодируем вручную
+        String decodedStart = java.net.URLDecoder.decode(start, java.nio.charset.StandardCharsets.UTF_8);
+        String decodedEnd = java.net.URLDecoder.decode(end, java.nio.charset.StandardCharsets.UTF_8);
+        LocalDateTime startDt = LocalDateTime.parse(decodedStart, formatter);
+        LocalDateTime endDt = LocalDateTime.parse(decodedEnd, formatter);
+        if (startDt.isAfter(endDt)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "start must be before end");
+        }
+        log.info("GET /stats start={}, end={}, uris={}, unique={}", startDt, endDt, uris, unique);
+        return statsService.getStats(startDt, endDt, uris, unique);
     }
 }
 

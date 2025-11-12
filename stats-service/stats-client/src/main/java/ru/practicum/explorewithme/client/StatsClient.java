@@ -45,7 +45,7 @@ public class StatsClient {
         if (unique != null) {
             builder.queryParam("unique", unique);
         }
-        String url = builder.build().encode().toUriString();
+        String url = builder.build(false).toUriString();
         ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(url, ViewStatsDto[].class);
 
         return response.getBody() != null ? List.of(response.getBody()) : List.of();

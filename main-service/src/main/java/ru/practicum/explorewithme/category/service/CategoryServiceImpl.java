@@ -27,9 +27,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public CategoryDto createCategory(NewCategoryDto categoryDto) {
-        Category category = Category.builder()
-                .name(categoryDto.getName())
-                .build();
+        Category category = categoryMapper.toEntity(categoryDto);
         Category saved = categoryRepository.save(category);
         log.info("Created category: {}", saved);
         return categoryMapper.toDto(saved);

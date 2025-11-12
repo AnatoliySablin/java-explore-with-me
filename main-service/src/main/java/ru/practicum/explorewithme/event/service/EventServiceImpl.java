@@ -30,6 +30,7 @@ import ru.practicum.explorewithme.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -239,11 +240,17 @@ public class EventServiceImpl implements EventService {
 
         saveStats(ip, uri);
 
+        Map<Long, Long> eventUriIdMap = getEventUriIdMap(events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList()));
+
+        Map<Long, Long> confirmedRequestsMap = getConfirmedRequestsMap(events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList()));
+
         List<EventShortDto> result = events.stream()
-                .map(event -> {
-                    EventShortDto dto = toShortDto(event);
-                    return dto;
-                })
+                .map(event -> toShortDto(event, confirmedRequestsMap.getOrDefault(event.getId(), 0L),
+                        eventUriIdMap.getOrDefault(event.getId(), 0L)))
                 .collect(Collectors.toList());
 
         if (sort != null && sort.equals("VIEWS")) {
@@ -260,12 +267,6 @@ public class EventServiceImpl implements EventService {
 
         saveStats(ip, uri);
 
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
         return toFullDto(event);
     }
 
@@ -281,6 +282,52 @@ public class EventServiceImpl implements EventService {
         dto.setConfirmedRequests(eventRepository.countConfirmedRequests(event.getId()));
         dto.setViews(getViews(event.getId()));
         return dto;
+    }
+
+    private EventShortDto toShortDto(Event event, Long confirmedRequests, Long views) {
+        EventShortDto dto = eventMapper.toShortDto(event);
+        dto.setConfirmedRequests(confirmedRequests);
+        dto.setViews(views);
+        return dto;
+    }
+
+    private Map<Long, Long> getEventUriIdMap(List<Long> eventIds) {
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            List<String> uris = eventIds.stream()
+                    .map(id -> "/events/" + id)
+                    .collect(Collectors.toList());
+
+            LocalDateTime start = LocalDateTime.of(2000, 1, 1, 0, 0);
+            LocalDateTime end = LocalDateTime.now().plusMinutes(5);
+
+            List<ViewStatsDto> stats = statsClient.getStats(start, end, uris, true);
+
+            return stats.stream()
+                    .collect(Collectors.toMap(
+                            stat -> Long.parseLong(stat.getUri().substring("/events/".length())),
+                            ViewStatsDto::getHits
+                    ));
+        } catch (Exception e) {
+            log.error("Failed to get views for events: {}", e.getMessage(), e);
+            return Map.of();
+        }
+    }
+
+    private Map<Long, Long> getConfirmedRequestsMap(List<Long> eventIds) {
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Object[]> results = eventRepository.countConfirmedRequestsByEventIds(eventIds);
+        return results.stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
     }
 
     private Long getViews(Long eventId) {

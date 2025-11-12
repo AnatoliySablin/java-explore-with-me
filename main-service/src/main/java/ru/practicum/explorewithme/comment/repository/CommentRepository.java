@@ -22,8 +22,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("SELECT c FROM Comment c " +
            "WHERE (:eventId IS NULL OR c.event.id = :eventId) " +
            "AND (:authorId IS NULL OR c.author.id = :authorId) " +
-           "AND (:rangeStart IS NULL OR c.createdOn >= :rangeStart) " +
-           "AND (:rangeEnd IS NULL OR c.createdOn <= :rangeEnd)")
+           "AND (CAST(:rangeStart AS timestamp) IS NULL OR c.createdOn >= :rangeStart) " +
+           "AND (CAST(:rangeEnd AS timestamp) IS NULL OR c.createdOn <= :rangeEnd)")
     Page<Comment> findCommentsByAdmin(@Param("eventId") Long eventId,
                                        @Param("authorId") Long authorId,
                                        @Param("rangeStart") LocalDateTime rangeStart,

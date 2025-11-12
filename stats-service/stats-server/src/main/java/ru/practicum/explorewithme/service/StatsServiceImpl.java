@@ -32,11 +32,16 @@ public class StatsServiceImpl implements StatsService {
 
     @Override
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
-        List<String> urisParam = (uris == null || uris.isEmpty()) ? null : uris;
-        if (unique != null && unique) {
-            return statsRepository.findStatsUnique(start, end, urisParam);
+        boolean hasUris = uris != null && !uris.isEmpty();
+        if (Boolean.TRUE.equals(unique)) {
+            return hasUris
+                    ? statsRepository.findStatsUniqueByUris(start, end, uris)
+                    : statsRepository.findStatsUniqueAll(start, end);
+        } else {
+            return hasUris
+                    ? statsRepository.findStatsByUris(start, end, uris)
+                    : statsRepository.findStatsAll(start, end);
         }
-        return statsRepository.findStats(start, end, urisParam);
     }
 }
 

@@ -6,12 +6,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.explorewithme.dto.EndpointHitDto;
 import ru.practicum.explorewithme.dto.ViewStatsDto;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import org.springframework.web.util.UriComponentsBuilder;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -34,27 +32,23 @@ public class StatsClient {
     }
 
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder
+        UriComponentsBuilder builder = UriComponentsBuilder
                 .fromHttpUrl(serverUrl + "/stats")
-                .queryParam("start", encodeDate(start))
-                .queryParam("end", encodeDate(end));
+                .queryParam("start", start.format(FORMATTER))
+                .queryParam("end", end.format(FORMATTER));
 
         if (uris != null && !uris.isEmpty()) {
-            uriBuilder.queryParam("uris", uris.toArray());
+            for (String uri : uris) {
+                builder.queryParam("uris", uri);
+            }
         }
-
-        if (unique != null && unique) {
-            uriBuilder.queryParam("unique", true);
+        if (unique != null) {
+            builder.queryParam("unique", unique);
         }
-
-        String uri = uriBuilder.toUriString();
-        ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(uri, ViewStatsDto[].class);
+        String url = builder.build(false).toUriString();
+        ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(url, ViewStatsDto[].class);
 
         return response.getBody() != null ? List.of(response.getBody()) : List.of();
-    }
-
-    private String encodeDate(LocalDateTime dateTime) {
-        return URLEncoder.encode(dateTime.format(FORMATTER), StandardCharsets.UTF_8);
     }
 }
 
